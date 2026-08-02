@@ -1,6 +1,7 @@
 # lukwm
 
 A minimal, floating X11 window manager written in C, inspired by [sowm](https://github.com/dylanaraps/sowm) and the suckless philosophy.
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/e3c61c7a-0fd8-4b49-8c1f-7c3af1e6f819" />
 
 - ~500 lines of C
 - ~28 KB compiled binary
