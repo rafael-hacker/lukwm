@@ -7,7 +7,7 @@
 #define BORDER_FOCUS "#88c0d0"
 #define BORDER_UNFOCUS "#444444"
 #define BORDER_WIDTH 	3
-#define BAR_HEIGHT 24 // Set to 0 if you don't use any bar
+#define BAR_HEIGHT 24 // Set to 0 if you don't use any bar, or adjust it according to the size of YOUR top bar
 #define GAP 8
 
 static const char *term_cmd[] = {"kitty", NULL};
