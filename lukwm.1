@@ -1,0 +1,120 @@
+.TH LUKWM 1 "2026" "lukwm" "User Commands"
+.SH NAME
+lukwm \- a minimal floating X11 window manager
+.SH SYNOPSIS
+.B lukwm
+.SH DESCRIPTION
+.B lukwm
+is a minimal, floating window manager for X11, written in C and inspired by
+.B sowm
+and the suckless philosophy. It has no runtime configuration file; all
+configuration is done by editing
+.I config.h
+and recompiling.
+.PP
+lukwm provides cascading window placement, 9 workspaces, focus-follows-mouse,
+mouse-driven move/resize, fullscreen and gapped-maximize modes, partial EWMH
+support (enough for status bars such as polybar to display workspace and
+active window state), and recognition of dock and desktop window types so
+that status bars and wallpaper managers are handled correctly instead of
+being treated as regular windows.
+.SH USAGE
+lukwm takes no command-line arguments. It is normally started either from a
+display manager (via the installed
+.I lukwm.desktop
+session file) or directly from
+.BR startx (1):
+.PP
+.RS
+startx lukwm \-\- :1 vt$(fgconsole)
+.RE
+.PP
+The
+.I vt$(fgconsole)
+argument ensures Xorg is started on the VT you are actually logged into.
+.SH CONFIGURATION
+lukwm has no runtime config file or IPC mechanism for configuration. All
+settings live in
+.I config.h
+in the source tree, which is compiled directly into the binary.
+.PP
+.I config.def.h
+is the versioned template with default values.
+.I config.h
+is generated from it on first
+.B make
+and is never tracked by version control or overwritten by subsequent builds
+\- it is where personal changes belong.
+.PP
+After editing
+.IR config.h ,
+run:
+.RS
+.nf
+make
+sudo make install
+.fi
+.RE
+.PP
+and either log out and back in, or use the in-session restart keybind
+(default
+.BR Super+Shift+R )
+after rebuilding, to reload the running instance without ending the X
+session.
+.PP
+Configurable values include the modifier keys, number of workspaces, border colors and width, gap and bar-height spacing used by
+the maximize mode, the commands spawned by each keybind, and the list of
+autostart commands.
+.SH DEFAULT KEYBINDINGS
+.TS
+l l.
+Super+Q	open terminal
+Super+A	open application launcher
+Super+X	open browser
+Super+C	close focused window
+Super+F	toggle fullscreen
+Super+M	toggle maximize (gapped fullscreen)
+Super+1..9	switch to workspace 1-9
+Super+Shift+1..9	move focused window to workspace 1-9
+Alt+Tab	cycle focus (current workspace)
+Super+Shift+R	restart lukwm in place
+Super+Left click+drag	move window
+Super+Right click+drag	resize window
+XF86AudioRaiseVolume	volume up
+XF86AudioLowerVolume	volume down
+XF86AudioMute	toggle mute
+.TE
+.PP
+All keybindings are defined in
+.I lukwm.c
+and reference commands from
+.IR config.h .
+.SH FILES
+.TP
+.I ~/lukwm/config.h
+(or wherever the source tree lives) \- personal configuration, compiled into the binary.
+.TP
+.I /usr/local/bin/lukwm
+installed binary.
+.TP
+.I /usr/share/xsessions/lukwm.desktop
+session file for display managers.
+.SH LIMITATIONS
+lukwm is a floating window manager only; it has no tiling layout engine.
+Restarting the running instance (Super+Shift+R) resets in-memory window
+tracking, so windows already open before a restart remain on screen but drop
+out of Alt-Tab, workspace switching, and the EWMH active/client-list
+properties until closed and reopened. lukwm currently targets a single
+monitor. The number of simultaneously tracked windows is capped by
+.B MAX_WINDOWS
+in
+.IR config.h .
+.SH SEE ALSO
+.BR startx (1),
+.BR Xorg (1)
+.PP
+sowm: https://github.com/dylanaraps/sowm
+.SH AUTHOR
+guilherme
+.SH LICENSE
+MIT

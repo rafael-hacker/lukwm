@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=lukwm
+Comment=Log in using lukwm
+Exec=/usr/local/bin/lukwm
+TryExec=/usr/local/bin/lukwm
+Type=Application
+DesktopNames=lukwm
