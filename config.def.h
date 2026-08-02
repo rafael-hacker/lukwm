@@ -18,15 +18,11 @@ static const char *vol_down[] = {"wpctl","set-volume","@DEFAULT_AUDIO_SINK@","5%
 static const char *vol_mute[] = {"wpctl","set-mute","@DEFAULT_AUDIO_SINK@","toggle",NULL};
 
 // autostart commands
-static const char *autostart_setxkbmap[] = {"setxkbmap", "br", "abnt2", NULL};
 static const char *autostart_nitrogen[] = {"nitrogen", "--restore",NULL};
 static const char *autostart_polybar[] = {"polybar",NULL};
-static const char *autostart_picom[] = {"picom","--config","/home/gui/.config/picom.conf",NULL};
 
 static const char **autostart[] = {
-	autostart_setxkbmap,
 	autostart_nitrogen,
 	autostart_polybar,
-	autostart_picom,
 	NULL
 };
