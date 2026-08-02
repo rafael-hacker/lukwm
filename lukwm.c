@@ -361,24 +361,24 @@ static void keypress(XEvent *e) {
     }
 
     if (ev->keycode == XKeysymToKeycode(d, XK_Tab) && CLEANMASK(ev->state) == ALTMOD) {
-    	Window focused;
-	int revert, i, start_i = -1;
-	XGetInputFocus(d, &focused, &revert);
-	
-	for (i = 0;i < win_count;i++) {
-		if (win_list[i].win == focused) { start_i = i; break; }
-	}
+       if (win_count == 0) return;
 
-	for (i = 1;i <= win_count;i++) {
+	    int i, start_i = -1;
+
+	    for (i = 0; i < win_count; i++) {
+		if (win_list[i].win == focused_win) { start_i = i; break; }
+	    }
+
+	    for (i = 1; i <= win_count; i++) {
 		int idx = (start_i + i) % win_count;
 		if (win_list[idx].ws == current_ws) {
-			XRaiseWindow(d, win_list[idx].win);
-			XSetInputFocus(d, win_list[idx].win, RevertToPointerRoot, CurrentTime);
-			set_active_window(win_list[idx].win);
-			set_focus_border(win_list[idx].win);
-			break;
+		    XRaiseWindow(d, win_list[idx].win);
+		    XSetInputFocus(d, win_list[idx].win, RevertToPointerRoot, CurrentTime);
+		    set_active_window(win_list[idx].win);
+		    set_focus_border(win_list[idx].win);
+		    break;
 		}
-	}
+	    }
     }
 
     if (ev->keycode == XKeysymToKeycode(d, XK_F) && CLEANMASK(ev->state) == MOD) {
@@ -426,7 +426,6 @@ static void maprequest(XEvent *e) {
     int slot = window_counter % 10;
     XMapRequestEvent *ev = &e->xmaprequest;
 
-    fprintf(stderr, "maprequest: window=0x%lx, is_dock=%d, is_desktop=%d", ev->window, is_dock(ev->window), is_desktop(ev->window));
     if (is_dock(ev->window)) {
     	XMapWindow(d, ev->window);
 	return;
