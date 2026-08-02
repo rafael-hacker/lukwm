@@ -436,7 +436,7 @@ static void maprequest(XEvent *e) {
 	int screen = DefaultScreen(d);
         XMoveResizeWindow(d, ev->window, 0, 0, DisplayWidth(d, screen), DisplayHeight(d, screen));
         XMapWindow(d, ev->window);
-        XLowerWindow(d, ev->window); // Mantém no fundo
+        XLowerWindow(d, ev->window);
         return;
     }
 
