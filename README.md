@@ -34,7 +34,7 @@ Being upfront about what lukwm does **not** do, so you know what you're getting 
 
 - **No tiling layout.** Windows cascade; there's no master-stack, no automatic arrangement. Use the mouse or your own workflow.
 - **Self-restart forgets pre-existing windows.** `Super + Shift + R` uses `execvp` to reload the binary in-place. This resets all in-memory state, so windows that were already open before the restart become untracked by the internal window list (they stay on screen, but drop out of Alt-Tab, workspace switching, and EWMH's client list) until you close and reopen them.
-- **Single monitor only.** No multi-monitor awareness yet.
+- **Single monitor only.** No multi-monitor awareness **yet**.
 - **Config requires recompiling.** There's no way to change keybindings or commands without editing `config.h` and running `make`. This is intentional (suckless philosophy), not a bug.
 
 ## Dependencies
