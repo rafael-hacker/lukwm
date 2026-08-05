@@ -33,6 +33,7 @@ static Atom net_number_of_desktops, net_current_desktop, net_client_list;
 static Atom net_active_window;
 static Atom net_wm_window_type, net_wm_window_type_dock;
 static Atom net_wm_window_type_desktop;
+static Atom net_wm_window_type_dialog;
 static Atom utf8_string;
 static Client *win_list;
 static int win_count = 0;
@@ -131,6 +132,23 @@ static int is_desktop(Window w) {
 	return result;
 }
 
+static int is_dialog(Window w) {
+	Atom actual_type;
+	int actual_format;
+	unsigned long nitems, bytes_after;
+	unsigned char *data = NULL;
+	int result = 0;
+
+	if (XGetWindowProperty(d, w, net_wm_window_type, 0, 1, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, &data) == Success) {
+		if (data) {
+			Atom type = *(Atom *)data;
+			if (type == net_wm_window_type_dialog) result = 1;
+			XFree(data);
+		}
+	}
+	return result;
+}
+
 static void set_active_window(Window w) {
 	XChangeProperty(d, root, net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
 }
@@ -146,6 +164,7 @@ static void init_ewmh(void) {
 	net_wm_window_type = XInternAtom(d, "_NET_WM_WINDOW_TYPE", False);
 	net_wm_window_type_dock = XInternAtom(d, "_NET_WM_WINDOW_TYPE_DOCK", False);
 	net_wm_window_type_desktop = XInternAtom(d, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
+	net_wm_window_type_dialog = XInternAtom(d, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 
 	utf8_string = XInternAtom(d, "UTF8_STRING", False);
 
@@ -183,6 +202,7 @@ static void switch_ws(int ws) {
 	current_ws = ws;
 	long cur = current_ws - 1;
 	XChangeProperty(d, root, net_current_desktop, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur, 1);
+	focused_win = None;
 }
 
 static void toggle_fullscreen(Window w) {
@@ -275,17 +295,23 @@ static void destroynotify(XEvent *e) {
 	}
 }
 
-static void buttonpress(XEvent *e) {
-	XButtonEvent *ev = &e->xbutton;
-	if (ev->subwindow == None) return;
+static void buttonpress(XEvent *e) 
+{
+  XButtonEvent *ev = &e->xbutton;
+  if (ev->subwindow == None) return;
 
-	drag_win = ev->subwindow;
-	drag_start_x = ev->x_root;
-	drag_start_y = ev->y_root;
-	XGetWindowAttributes(d, drag_win, &drag_start_attr);
-	is_resize = (ev->button == Button3);
+  XWindowAttributes wa;
+  if (XGetWindowAttributes(d, ev->subwindow, &wa) && wa.override_redirect) return;
 
-	XRaiseWindow(d, drag_win);
+  if (is_dock(ev->subwindow) || is_desktop(ev->subwindow) || is_dialog(ev->subwindow)) return;
+
+  drag_win = ev->subwindow;
+  drag_start_x = ev->x_root;
+  drag_start_y = ev->y_root;
+  XGetWindowAttributes(d, drag_win, &drag_start_attr);
+  is_resize = (ev->button == Button3);
+
+  XRaiseWindow(d, drag_win);
 }
 
 static void motionnotify(XEvent *e)
@@ -437,6 +463,23 @@ static void maprequest(XEvent *e) {
         XMapWindow(d, ev->window);
         XLowerWindow(d, ev->window);
         return;
+    }
+
+    if (is_dialog(ev->window)) {
+	    XSetWindowBorderWidth(d, ev->window, 0);
+	    XMapWindow(d, ev->window);
+	    XSelectInput(d, ev->window, StructureNotifyMask | EnterWindowMask);
+	    XRaiseWindow(d, ev->window);
+	    XSetInputFocus(d, ev->window, RevertToPointerRoot, CurrentTime);
+	    set_active_window(ev->window);
+	    set_focus_border(ev->window);
+	    if (win_count < WIN_CAPACITY) {
+		win_list[win_count].win = ev->window;
+		win_list[win_count].ws = current_ws;
+		win_count++;
+	    }
+	    window_counter++;
+	    return;
     }
 
     XSetWindowBorderWidth(d, ev->window, BORDER_WIDTH);
