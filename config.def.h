@@ -17,6 +17,9 @@ static const char *vol_up[] = {"wpctl", "set-volume","@DEFAULT_AUDIO_SINK@","5%+
 static const char *vol_down[] = {"wpctl","set-volume","@DEFAULT_AUDIO_SINK@","5%-",NULL};
 static const char *vol_mute[] = {"wpctl","set-mute","@DEFAULT_AUDIO_SINK@","toggle",NULL};
 
+static const char *menu_launcher[] = {"rofi","-show","drun",NULL};
+static const char *browser[] = {"firefox",NULL};
+
 // autostart commands
 static const char *autostart_nitrogen[] = {"nitrogen", "--restore",NULL};
 static const char *autostart_polybar[] = {"polybar",NULL};
