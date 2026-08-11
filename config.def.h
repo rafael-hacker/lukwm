@@ -9,6 +9,7 @@
 #define BORDER_WIDTH 	3
 #define BAR_HEIGHT 24 // Set to 0 if you don't use any bar, or adjust it according to the size of YOUR top bar
 #define GAP 8
+#define SNAP_THRESHOLD 24
 
 static const char *term_cmd[] = {"kitty", NULL};
 

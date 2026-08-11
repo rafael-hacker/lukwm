@@ -62,6 +62,11 @@ static void (*events[LASTEvent])(XEvent *e) = {
     [DestroyNotify] = destroynotify,
 };
 
+typedef enum {
+  SNAP_LEFT, SNAP_RIGHT, SNAP_TOP, SNAP_BOTTOM,
+  SNAP_TOPLEFT, SNAP_TOPRIGHT, SNAP_BOTTOMLEFT, SNAP_BOTTOMRIGHT
+} SnapPosition;
+
 static void spawn(const char **cmd) {
     if (fork() == 0) {
         if (d) close(ConnectionNumber(d));
@@ -246,6 +251,36 @@ static void toggle_maximize(Window w) {
     }
 }
 
+static void snap_window(Window w, SnapPosition pos) {
+  if (w == None || w == root) return;
+
+  int screen = DefaultScreen(d);
+  int sw = DisplayWidth(d, screen);
+  int sh = DisplayHeight(d, screen);
+
+  int usable_x = GAP;
+  int usable_y = BAR_HEIGHT + GAP;
+  int usable_w = sw - (GAP * 2);
+  int usable_h = sh - BAR_HEIGHT - (GAP * 2);
+
+  int half_w = (usable_w - GAP) / 2;
+  int half_h = (usable_h - GAP) / 2;
+
+  int x = usable_x, y = usable_y, width = usable_w, height = usable_h;
+  switch (pos) {
+        case SNAP_LEFT:        width = half_w; height = usable_h; break;
+        case SNAP_RIGHT:       x = usable_x + half_w + GAP; width = half_w; height = usable_h; break;
+        case SNAP_TOP:         width = usable_w; height = half_h; break;
+        case SNAP_BOTTOM:      y = usable_y + half_h + GAP; width = usable_w; height = half_h; break;
+        case SNAP_TOPLEFT:     width = half_w; height = half_h; break;
+        case SNAP_TOPRIGHT:    x = usable_x + half_w + GAP; width = half_w; height = half_h; break;
+        case SNAP_BOTTOMLEFT:  y = usable_y + half_h + GAP; width = half_w; height = half_h; break;
+        case SNAP_BOTTOMRIGHT: x = usable_x + half_w + GAP; y = usable_y + half_h + GAP; width = half_w; height = half_h; break;
+    }
+
+    XMoveResizeWindow(d, w, x, y, width, height);
+}
+
 static int has_delete_protocol(Window w) {
 	Atom *protocols;
 	int count, i, found = 0;
@@ -333,7 +368,34 @@ static void motionnotify(XEvent *e)
 	}
 }
 
-static void buttonrelease(XEvent *e) { drag_win = None; }
+static void buttonrelease(XEvent *e) {
+    if (drag_win != None && !is_resize) {
+        int screen = DefaultScreen(d);
+        int sw = DisplayWidth(d, screen);
+        int sh = DisplayHeight(d, screen);
+
+        Window root_ret, child_ret;
+        int root_x, root_y, win_x, win_y;
+        unsigned int mask;
+        XQueryPointer(d, root, &root_ret, &child_ret, &root_x, &root_y, &win_x, &win_y, &mask);
+
+        int at_left   = root_x <= SNAP_THRESHOLD;
+        int at_right  = root_x >= sw - SNAP_THRESHOLD;
+        int at_top    = root_y <= SNAP_THRESHOLD;
+        int at_bottom = root_y >= sh - SNAP_THRESHOLD;
+
+        if (at_top && at_left)          snap_window(drag_win, SNAP_TOPLEFT);
+        else if (at_top && at_right)    snap_window(drag_win, SNAP_TOPRIGHT);
+        else if (at_bottom && at_left)  snap_window(drag_win, SNAP_BOTTOMLEFT);
+        else if (at_bottom && at_right) snap_window(drag_win, SNAP_BOTTOMRIGHT);
+        else if (at_left)               snap_window(drag_win, SNAP_LEFT);
+        else if (at_right)              snap_window(drag_win, SNAP_RIGHT);
+        else if (at_top)                snap_window(drag_win, SNAP_TOP);
+        else if (at_bottom)             snap_window(drag_win, SNAP_BOTTOM);
+    }
+
+    drag_win = None;
+}
 
 static void enternotify(XEvent *e) {
 	XCrossingEvent *ev = &e->xcrossing;
@@ -427,9 +489,23 @@ static void keypress(XEvent *e) {
 
     if (CLEANMASK(ev->state) == (MOD|ShiftMask)) {
     	KeySym ks = XkbKeycodeToKeysym(d, ev->keycode, 0, 0);
-	if (ks >= XK_1 && ks <= XK_9) {
-		move_to_ws(ks - XK_1 + 1);
-	}
+      if (ks >= XK_1 && ks <= XK_9) {
+        move_to_ws(ks - XK_1 + 1);
+      }
+    }
+
+    if (CLEANMASK(ev->state) == MOD) {
+      KeySym ks = XkbKeycodeToKeysym(d, ev->keycode, 0, 0);
+      switch (ks) {
+        case XK_Left:  snap_window(focused_win, SNAP_LEFT); break;
+        case XK_Right: snap_window(focused_win, SNAP_RIGHT); break;
+        case XK_Up:    snap_window(focused_win, SNAP_TOP); break;
+        case XK_Down:  snap_window(focused_win, SNAP_BOTTOM); break;
+        case XK_Home:  snap_window(focused_win, SNAP_TOPLEFT); break;
+        case XK_Prior: snap_window(focused_win, SNAP_TOPRIGHT); break;
+        case XK_End:   snap_window(focused_win, SNAP_BOTTOMLEFT); break;
+        case XK_Next:  snap_window(focused_win, SNAP_BOTTOMRIGHT); break;
+      }
     }
 
     if (ev->keycode == XKeysymToKeycode(d, XK_M) && CLEANMASK(ev->state) == MOD) {
@@ -498,32 +574,53 @@ static void maprequest(XEvent *e) {
     window_counter++;
 }
 
+static void grab_key(KeySym keysym, unsigned int mod, Window r) {
+  unsigned int modifiers[] = {0, LockMask, Mod2Mask, LockMask | Mod2Mask };
+  KeyCode code = XKeysymToKeycode(d, keysym);
+
+  if (code == 0) return;
+
+  for (int i = 0;i < 4;i++) {
+    XGrabKey(d, code, mod | modifiers[i], r, True, GrabModeAsync, GrabModeAsync);
+  }
+}
+
 // Shortcuts configs
 static void input_grab(Window r) {
-    XGrabKey(d, XKeysymToKeycode(d, XK_Return), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_Q), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_Tab), ALTMOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_F), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_R), MOD|ShiftMask, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_A), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_X), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_Q), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_M), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XK_C), MOD, r, True, GrabModeAsync, GrabModeAsync);
+    grab_key(XK_Return, MOD, r);
+    grab_key(XK_Q, MOD, r);
+    grab_key(XK_Tab, ALTMOD, r);
+    grab_key(XK_F, MOD, r);
+    grab_key(XK_R, MOD | ShiftMask, r);
+    grab_key(XK_A, MOD, r);
+    grab_key(XK_X, MOD, r);
+    grab_key(XK_M, MOD, r);
+    grab_key(XK_C, MOD, r);
+    
     XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioRaiseVolume), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
     XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioLowerVolume), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
     XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioMute), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
+    
+    grab_key(XK_Left, MOD, r);
+    grab_key(XK_Right, MOD, r);
+    grab_key(XK_Up, MOD, r);
+    grab_key(XK_Down, MOD, r);
+    grab_key(XK_Home, MOD, r);
+    grab_key(XK_Prior, MOD, r);
+    grab_key(XK_End, MOD, r);
+    grab_key(XK_Next, MOD, r);
 
     int i;
-    for (i = XK_1;i <= XK_9;i++) {
-    	XGrabKey(d, XKeysymToKeycode(d, i), MOD, r, True, GrabModeAsync, GrabModeAsync);
-    }
-    for (i = XK_1;i <= XK_9;i++) {
-    	XGrabKey(d, XKeysymToKeycode(d, i), MOD|ShiftMask, r, True, GrabModeAsync, GrabModeAsync);
+    for (i = XK_1; i <= XK_9; i++) {
+        grab_key(i, MOD, r);
+        grab_key(i, MOD | ShiftMask, r);
     }
 
-    XGrabButton(d, Button1, MOD, r, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-    XGrabButton(d, Button3, MOD, r, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+    unsigned int modifiers[] = { 0, LockMask, Mod2Mask, LockMask | Mod2Mask };
+    for (i = 0; i < 4; i++) {
+        XGrabButton(d, Button1, MOD | modifiers[i], r, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+        XGrabButton(d, Button3, MOD | modifiers[i], r, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+    }
 }
 
 static int xerror(Display *dpy, XErrorEvent *ee) {
