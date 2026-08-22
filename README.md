@@ -116,10 +116,10 @@ Or, if lukwm is already running, use the self-restart keybind (`Super + Shift + 
 
 | Keybind | Action |
 |---|---|
-| `Super + Return` | Open terminal |
+| `Super + Q` | Open terminal |
 | `Super + A` | Open app launcher |
 | `Super + X` | Open browser |
-| `Super + Q` | Close focused window |
+| `Super + C` | Close focused window |
 | `Super + F` | Toggle fullscreen |
 | `Super + M` | Toggle maximize (fullscreen with gaps, respects bar height) |
 | `Super + 1..9` | Switch to workspace 1–9 |
