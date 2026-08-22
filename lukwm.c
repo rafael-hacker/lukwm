@@ -521,6 +521,14 @@ static void keypress(XEvent *e) {
     if (ev->keycode == XKeysymToKeycode(d, XF86XK_AudioMute)) {
         spawn(vol_mute);
     }
+
+    if (ev->keycode == XKeysymToKeycode(d, XF86XK_MonBrightnessUp)) {
+        spawn(bright_up);
+    }
+
+    if (ev->keycode == XKeysymToKeycode(d, XF86XK_MonBrightnessDown)) {
+        spawn(bright_down);
+    }
 }
 
 static void maprequest(XEvent *e) {
@@ -600,6 +608,8 @@ static void input_grab(Window r) {
     XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioRaiseVolume), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
     XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioLowerVolume), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
     XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioMute), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(d, XKeysymToKeycode(d, XF86XK_MonBrightnessUp), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(d, XKeysymToKeycode(d, XF86XK_MonBrightnessDown), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
     
     grab_key(XK_Left, MOD, r);
     grab_key(XK_Right, MOD, r);
