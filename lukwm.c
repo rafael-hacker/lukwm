@@ -19,7 +19,7 @@ typedef struct {
 } Client;
 
 // Global Variables
-static Display *d;
+static Display *display;
 static Window root;
 static Window fullscreen_win = None;
 static XWindowAttributes fullscreen_saved;
@@ -69,48 +69,48 @@ typedef enum {
 
 static void spawn(const char **cmd) {
     if (fork() == 0) {
-        if (d) close(ConnectionNumber(d));
+        if (display) close(ConnectionNumber(display));
         setsid();
         execvp(cmd[0], (char **)cmd);
         exit(0);
     }
 }
 
-static void set_focus_border(Window w) {
-	if (focused_win != None && focused_win != w) {
-		XSetWindowBorder(d, focused_win, border_unfocus);
+static void set_focus_border(Window window) {
+	if (focused_win != None && focused_win != window) {
+		XSetWindowBorder(display, focused_win, border_unfocus);
 	}
-	if (w != None) {
-		XSetWindowBorder(d, w, border_focus);
+	if (window != None) {
+		XSetWindowBorder(display, window, border_focus);
 	}
-	focused_win = w;
+	focused_win = window;
 }
 
 static void init_colors(void) {
-	Colormap cmap = DefaultColormap(d, DefaultScreen(d));
+	Colormap cmap = DefaultColormap(display, DefaultScreen(display));
 	XColor color;
 
-	XAllocNamedColor(d, cmap, BORDER_FOCUS, &color, &color);
+	XAllocNamedColor(display, cmap, BORDER_FOCUS, &color, &color);
 	border_focus = color.pixel;
 
-	XAllocNamedColor(d, cmap, BORDER_UNFOCUS, &color, &color);
+	XAllocNamedColor(display, cmap, BORDER_UNFOCUS, &color, &color);
 	border_unfocus = color.pixel;
 }
 
 static void restart_wm(char *self_path) {
-	XCloseDisplay(d);
+	XCloseDisplay(display);
 	execvp(self_path, (char *[]){self_path, NULL});
 	exit(1);
 }
 
-static int is_dock(Window w) {
+static int is_dock(Window window) {
 	Atom actual_type;
 	int actual_format;
 	unsigned long nitems, bytes_after;
 	unsigned char *data = NULL;
 	int result = 0;
 
-	if (XGetWindowProperty(d, w, net_wm_window_type, 0, 1, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, &data) == Success) {
+	if (XGetWindowProperty(display, window, net_wm_window_type, 0, 1, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, &data) == Success) {
 		if (data) {
 			Atom type = *(Atom *)data;
 			if (type == net_wm_window_type_dock) result = 1;
@@ -120,14 +120,14 @@ static int is_dock(Window w) {
 	return result;
 }
 
-static int is_desktop(Window w) {
+static int is_desktop(Window window) {
 	Atom actual_type;
 	int actual_format;
 	unsigned long nitems, bytes_after;
 	unsigned char *data = NULL;
 	int result = 0;
 
-	if (XGetWindowProperty(d, w, net_wm_window_type, 0, 1, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, &data) == Success) {
+	if (XGetWindowProperty(display, window, net_wm_window_type, 0, 1, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, &data) == Success) {
 		if (data) {
 			Atom type = *(Atom *)data;
 			if (type == net_wm_window_type_desktop) result = 1;
@@ -137,14 +137,14 @@ static int is_desktop(Window w) {
 	return result;
 }
 
-static int is_dialog(Window w) {
+static int is_dialog(Window window) {
 	Atom actual_type;
 	int actual_format;
 	unsigned long nitems, bytes_after;
 	unsigned char *data = NULL;
 	int result = 0;
 
-	if (XGetWindowProperty(d, w, net_wm_window_type, 0, 1, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, &data) == Success) {
+	if (XGetWindowProperty(display, window, net_wm_window_type, 0, 1, False, XA_ATOM, &actual_type, &actual_format, &nitems, &bytes_after, &data) == Success) {
 		if (data) {
 			Atom type = *(Atom *)data;
 			if (type == net_wm_window_type_dialog) result = 1;
@@ -154,43 +154,43 @@ static int is_dialog(Window w) {
 	return result;
 }
 
-static void set_active_window(Window w) {
-	XChangeProperty(d, root, net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
+static void set_active_window(Window window) {
+	XChangeProperty(display, root, net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&window, 1);
 }
 
 static void init_ewmh(void) {
-	net_supported = XInternAtom(d, "_NET_SUPPORTED", False);
-	net_wm_name = XInternAtom(d, "_NET_WM_NAME", False);
-	net_wm_check = XInternAtom(d, "_NET_SUPPORTING_WM_CHECK", False);
-	net_number_of_desktops = XInternAtom(d, "_NET_NUMBER_OF_DESKTOPS", False);
-	net_current_desktop = XInternAtom(d, "_NET_CURRENT_DESKTOP", False);
-	net_client_list = XInternAtom(d, "_NET_CLIENT_LIST", False);
-	net_active_window = XInternAtom(d, "_NET_ACTIVE_WINDOW", False);
-	net_wm_window_type = XInternAtom(d, "_NET_WM_WINDOW_TYPE", False);
-	net_wm_window_type_dock = XInternAtom(d, "_NET_WM_WINDOW_TYPE_DOCK", False);
-	net_wm_window_type_desktop = XInternAtom(d, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
-	net_wm_window_type_dialog = XInternAtom(d, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+	net_supported = XInternAtom(display, "_NET_SUPPORTED", False);
+	net_wm_name = XInternAtom(display, "_NET_WM_NAME", False);
+	net_wm_check = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
+	net_number_of_desktops = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
+	net_current_desktop = XInternAtom(display, "_NET_CURRENT_DESKTOP", False);
+	net_client_list = XInternAtom(display, "_NET_CLIENT_LIST", False);
+	net_active_window = XInternAtom(display, "_NET_ACTIVE_WINDOW", False);
+	net_wm_window_type = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
+	net_wm_window_type_dock = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", False);
+	net_wm_window_type_desktop = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
+	net_wm_window_type_dialog = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 
-	utf8_string = XInternAtom(d, "UTF8_STRING", False);
+	utf8_string = XInternAtom(display, "UTF8_STRING", False);
 
 	Atom supported[] = {
 		net_wm_name, net_wm_check, net_number_of_desktops, net_current_desktop, net_client_list, net_active_window
 	};
 
-	XChangeProperty(d, root, net_supported, XA_ATOM, 32, PropModeReplace, (unsigned char *)supported, sizeof(supported) / sizeof(Atom));
+	XChangeProperty(display, root, net_supported, XA_ATOM, 32, PropModeReplace, (unsigned char *)supported, sizeof(supported) / sizeof(Atom));
 
-	Window check_win = XCreateSimpleWindow(d, root, 0, 0, 1, 1, 0, 0, 0);
-	XChangeProperty(d, check_win, net_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&check_win, 1);
-	XChangeProperty(d, root, net_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&check_win, 1);
+	Window check_win = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, 0, 0);
+	XChangeProperty(display, check_win, net_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&check_win, 1);
+	XChangeProperty(display, root, net_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&check_win, 1);
 
-	XChangeProperty(d, check_win, net_wm_name, utf8_string, 8, PropModeReplace, (unsigned char *)"lukwm", 5);
-	XChangeProperty(d, root, net_wm_name, utf8_string, 8, PropModeReplace, (unsigned char *)"lukwm", 5);
+	XChangeProperty(display, check_win, net_wm_name, utf8_string, 8, PropModeReplace, (unsigned char *)"lukwm", 5);
+	XChangeProperty(display, root, net_wm_name, utf8_string, 8, PropModeReplace, (unsigned char *)"lukwm", 5);
 
 	long ndesktops = NUM_WS;
-	XChangeProperty(d, root, net_number_of_desktops, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&ndesktops, 1);
+	XChangeProperty(display, root, net_number_of_desktops, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&ndesktops, 1);
 
 	long cur = current_ws = 1;
-	XChangeProperty(d, root, net_current_desktop, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur, 1);
+	XChangeProperty(display, root, net_current_desktop, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur, 1);
 }
 
 static void switch_ws(int ws) {
@@ -199,64 +199,64 @@ static void switch_ws(int ws) {
 
 	for (i = 0;i < win_count;i++) {
 		if (win_list[i].ws == current_ws) {
-			XUnmapWindow(d, win_list[i].win);
+			XUnmapWindow(display, win_list[i].win);
 		} else if (win_list[i].ws == ws) {
-			XMapWindow(d, win_list[i].win);
+			XMapWindow(display, win_list[i].win);
 		}
 	}
 	current_ws = ws;
 	long cur = current_ws - 1;
-	XChangeProperty(d, root, net_current_desktop, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur, 1);
+	XChangeProperty(display, root, net_current_desktop, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur, 1);
 	focused_win = None;
 }
 
-static void toggle_fullscreen(Window w) {
-	if (w == None || w == root) return;
+static void toggle_fullscreen(Window window) {
+	if (window == None || window == root) return;
 
-	if (fullscreen_win == w) {
-		XMoveResizeWindow(d, w, fullscreen_saved.x, fullscreen_saved.y, fullscreen_saved.width, fullscreen_saved.height);
-		XSetWindowBorderWidth(d, w, BORDER_WIDTH);
+	if (fullscreen_win == window) {
+		XMoveResizeWindow(display, window, fullscreen_saved.x, fullscreen_saved.y, fullscreen_saved.width, fullscreen_saved.height);
+		XSetWindowBorderWidth(display, window, BORDER_WIDTH);
 		fullscreen_win = None;
 	} else {
-		XGetWindowAttributes(d, w, &fullscreen_saved);
-		int screen = DefaultScreen(d);
-		int sw = DisplayWidth(d, screen);
-		int sh = DisplayHeight(d, screen);
-		XMoveResizeWindow(d, w, 0, 0, sw, sh);
-		XSetWindowBorderWidth(d, w, 0);
-		fullscreen_win = w;
+		XGetWindowAttributes(display, window, &fullscreen_saved);
+		int screen = DefaultScreen(display);
+		int sw = DisplayWidth(display, screen);
+		int sh = DisplayHeight(display, screen);
+		XMoveResizeWindow(display, window, 0, 0, sw, sh);
+		XSetWindowBorderWidth(display, window, 0);
+		fullscreen_win = window;
 	}
 }
 
-static void toggle_maximize(Window w) {
-	if (w == None || w == root) return;
+static void toggle_maximize(Window window) {
+	if (window == None || window == root) return;
 
-	if (maximized_win == w) {
-        XMoveResizeWindow(d, w, maximized_saved.x, maximized_saved.y,
+	if (maximized_win == window) {
+        XMoveResizeWindow(display, window, maximized_saved.x, maximized_saved.y,
                            maximized_saved.width, maximized_saved.height);
         maximized_win = None;
     } else {
-        XGetWindowAttributes(d, w, &maximized_saved);
-        int screen = DefaultScreen(d);
-        int sw = DisplayWidth(d, screen);
-        int sh = DisplayHeight(d, screen);
+        XGetWindowAttributes(display, window, &maximized_saved);
+        int screen = DefaultScreen(display);
+        int sw = DisplayWidth(display, screen);
+        int sh = DisplayHeight(display, screen);
 
         int x = GAP;
         int y = BAR_HEIGHT + GAP;
         int width = sw - (GAP * 2);
         int height = sh - BAR_HEIGHT - (GAP * 2);
 
-        XMoveResizeWindow(d, w, x, y, width, height);
-        maximized_win = w;
+        XMoveResizeWindow(display, window, x, y, width, height);
+        maximized_win = window;
     }
 }
 
-static void snap_window(Window w, SnapPosition pos) {
-  if (w == None || w == root) return;
+static void snap_window(Window window, SnapPosition pos) {
+  if (window == None || window == root) return;
 
-  int screen = DefaultScreen(d);
-  int sw = DisplayWidth(d, screen);
-  int sh = DisplayHeight(d, screen);
+  int screen = DefaultScreen(display);
+  int sw = DisplayWidth(display, screen);
+  int sh = DisplayHeight(display, screen);
 
   int usable_x = GAP;
   int usable_y = BAR_HEIGHT + GAP;
@@ -278,14 +278,14 @@ static void snap_window(Window w, SnapPosition pos) {
         case SNAP_BOTTOMRIGHT: x = usable_x + half_w + GAP; y = usable_y + half_h + GAP; width = half_w; height = half_h; break;
     }
 
-    XMoveResizeWindow(d, w, x, y, width, height);
+    XMoveResizeWindow(display, window, x, y, width, height);
 }
 
-static int has_delete_protocol(Window w) {
+static int has_delete_protocol(Window window) {
 	Atom *protocols;
 	int count, i, found = 0;
 
-	if (XGetWMProtocols(d, w, &protocols, &count)) {
+	if (XGetWMProtocols(display, window, &protocols, &count)) {
 		for (i = 0;i < count;i++) {
 			if (protocols[i] == wm_delete) found = 1;
 		}
@@ -294,18 +294,18 @@ static int has_delete_protocol(Window w) {
 	return found;
 }
 
-static void close_window(Window w) {
-	if (has_delete_protocol(w)) {
+static void close_window(Window window) {
+	if (has_delete_protocol(window)) {
 		XEvent msg;
 		msg.type = ClientMessage;
-		msg.xclient.window = w;
+		msg.xclient.window = window;
 		msg.xclient.message_type = wm_protocols;
 		msg.xclient.format = 32;
 		msg.xclient.data.l[0] = wm_delete;
 		msg.xclient.data.l[1] = CurrentTime;
-		XSendEvent(d, w, False, NoEventMask, &msg);
+		XSendEvent(display, window, False, NoEventMask, &msg);
 	} else {
-		XKillClient(d, w);
+		XKillClient(display, window);
 	}
 }
 
@@ -336,17 +336,17 @@ static void buttonpress(XEvent *e)
   if (ev->subwindow == None) return;
 
   XWindowAttributes wa;
-  if (XGetWindowAttributes(d, ev->subwindow, &wa) && wa.override_redirect) return;
+  if (XGetWindowAttributes(display, ev->subwindow, &wa) && wa.override_redirect) return;
 
   if (is_dock(ev->subwindow) || is_desktop(ev->subwindow) || is_dialog(ev->subwindow)) return;
 
   drag_win = ev->subwindow;
   drag_start_x = ev->x_root;
   drag_start_y = ev->y_root;
-  XGetWindowAttributes(d, drag_win, &drag_start_attr);
+  XGetWindowAttributes(display, drag_win, &drag_start_attr);
   is_resize = (ev->button == Button3);
 
-  XRaiseWindow(d, drag_win);
+  XRaiseWindow(display, drag_win);
 }
 
 static void motionnotify(XEvent *e)
@@ -362,22 +362,22 @@ static void motionnotify(XEvent *e)
 		int new_h = drag_start_attr.height + dy;
 		if (new_w < 40) new_w = 40;
 		if (new_h < 40) new_h = 40;
-		XResizeWindow(d, drag_win, new_w, new_h);
+		XResizeWindow(display, drag_win, new_w, new_h);
 	} else {
-		XMoveWindow(d, drag_win, drag_start_attr.x + dx, drag_start_attr.y + dy);
+		XMoveWindow(display, drag_win, drag_start_attr.x + dx, drag_start_attr.y + dy);
 	}
 }
 
 static void buttonrelease(XEvent *e) {
     if (drag_win != None && !is_resize) {
-        int screen = DefaultScreen(d);
-        int sw = DisplayWidth(d, screen);
-        int sh = DisplayHeight(d, screen);
+        int screen = DefaultScreen(display);
+        int sw = DisplayWidth(display, screen);
+        int sh = DisplayHeight(display, screen);
 
         Window root_ret, child_ret;
         int root_x, root_y, win_x, win_y;
         unsigned int mask;
-        XQueryPointer(d, root, &root_ret, &child_ret, &root_x, &root_y, &win_x, &win_y, &mask);
+        XQueryPointer(display, root, &root_ret, &child_ret, &root_x, &root_y, &win_x, &win_y, &mask);
 
         int at_left   = root_x <= SNAP_THRESHOLD;
         int at_right  = root_x >= sw - SNAP_THRESHOLD;
@@ -399,7 +399,7 @@ static void buttonrelease(XEvent *e) {
 
 static void enternotify(XEvent *e) {
 	XCrossingEvent *ev = &e->xcrossing;
-	XSetInputFocus(d, ev->window, RevertToPointerRoot, CurrentTime);
+	XSetInputFocus(display, ev->window, RevertToPointerRoot, CurrentTime);
 	set_active_window(ev->window);
 	set_focus_border(ev->window);
 }
@@ -410,12 +410,12 @@ static void move_to_ws(int ws) {
 
 	if (ws == current_ws) return;
 
-	XGetInputFocus(d, &focused, &revert);
+	XGetInputFocus(display, &focused, &revert);
 
 	for (i = 0;i < win_count;i++) {
 		if (win_list[i].win == focused) {
 			win_list[i].ws = ws;
-			XUnmapWindow(d, focused);
+			XUnmapWindow(display, focused);
 			set_active_window(None);
 			set_focus_border(None);
 			break;
@@ -428,27 +428,27 @@ static void keypress(XEvent *e) {
     XKeyPressedEvent *ev = &e->xkey;
 
     // Super + Q opens terminal (edit term_cmd on config.h)
-    if (ev->keycode == XKeysymToKeycode(d, XK_Q) && CLEANMASK(ev->state) == MOD) {
+    if (ev->keycode == XKeysymToKeycode(display, XK_Q) && CLEANMASK(ev->state) == MOD) {
         spawn(term_cmd);
     }
 
     // Super + A Opens the menu launcher (edit menu_launcher on config.h)
-    if (ev->keycode == XKeysymToKeycode(d, XK_A) && CLEANMASK(ev->state) == MOD) {
+    if (ev->keycode == XKeysymToKeycode(display, XK_A) && CLEANMASK(ev->state) == MOD) {
     	spawn(menu_launcher);
     }
     
     // Super + C Closes the current window
-    if (ev->keycode == XKeysymToKeycode(d, XK_C) && CLEANMASK(ev->state) == MOD) {
+    if (ev->keycode == XKeysymToKeycode(display, XK_C) && CLEANMASK(ev->state) == MOD) {
 	if (focused_win != None) {
 		close_window(focused_win);
 	}
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XK_X) && CLEANMASK(ev->state) == MOD) {
+    if (ev->keycode == XKeysymToKeycode(display, XK_X) && CLEANMASK(ev->state) == MOD) {
     	spawn(browser);
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XK_Tab) && CLEANMASK(ev->state) == ALTMOD) {
+    if (ev->keycode == XKeysymToKeycode(display, XK_Tab) && CLEANMASK(ev->state) == ALTMOD) {
        if (win_count == 0) return;
 
 	    int i, start_i = -1;
@@ -460,8 +460,8 @@ static void keypress(XEvent *e) {
 	    for (i = 1; i <= win_count; i++) {
 		int idx = (start_i + i) % win_count;
 		if (win_list[idx].ws == current_ws) {
-		    XRaiseWindow(d, win_list[idx].win);
-		    XSetInputFocus(d, win_list[idx].win, RevertToPointerRoot, CurrentTime);
+		    XRaiseWindow(display, win_list[idx].win);
+		    XSetInputFocus(display, win_list[idx].win, RevertToPointerRoot, CurrentTime);
 		    set_active_window(win_list[idx].win);
 		    set_focus_border(win_list[idx].win);
 		    break;
@@ -469,33 +469,33 @@ static void keypress(XEvent *e) {
 	    }
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XK_F) && CLEANMASK(ev->state) == MOD) {
-    	Window focused;
+    if (ev->keycode == XKeysymToKeycode(display, XK_F) && CLEANMASK(ev->state) == MOD) {
+    Window focused;
 	int revert;
-	XGetInputFocus(d, &focused, &revert);
+	XGetInputFocus(display, &focused, &revert);
 	toggle_fullscreen(focused);
     }
 
     if (CLEANMASK(ev->state) == MOD) {
-    	KeySym ks = XkbKeycodeToKeysym(d, ev->keycode, 0, 0);
+    	KeySym ks = XkbKeycodeToKeysym(display, ev->keycode, 0, 0);
 	if (ks >= XK_1 && ks <= XK_9) {
 		switch_ws(ks - XK_1 + 1);
 	}
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XK_R) && CLEANMASK(ev->state) == (MOD|ShiftMask)) {
+    if (ev->keycode == XKeysymToKeycode(display, XK_R) && CLEANMASK(ev->state) == (MOD|ShiftMask)) {
     	restart_wm(self_path);
     }
 
     if (CLEANMASK(ev->state) == (MOD|ShiftMask)) {
-    	KeySym ks = XkbKeycodeToKeysym(d, ev->keycode, 0, 0);
+    	KeySym ks = XkbKeycodeToKeysym(display, ev->keycode, 0, 0);
       if (ks >= XK_1 && ks <= XK_9) {
         move_to_ws(ks - XK_1 + 1);
       }
     }
 
     if (CLEANMASK(ev->state) == MOD) {
-      KeySym ks = XkbKeycodeToKeysym(d, ev->keycode, 0, 0);
+      KeySym ks = XkbKeycodeToKeysym(display, ev->keycode, 0, 0);
       switch (ks) {
         case XK_Left:  snap_window(focused_win, SNAP_LEFT); break;
         case XK_Right: snap_window(focused_win, SNAP_RIGHT); break;
@@ -508,25 +508,25 @@ static void keypress(XEvent *e) {
       }
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XK_M) && CLEANMASK(ev->state) == MOD) {
+    if (ev->keycode == XKeysymToKeycode(display, XK_M) && CLEANMASK(ev->state) == MOD) {
 	    toggle_maximize(focused_win);
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XF86XK_AudioRaiseVolume)) {
+    if (ev->keycode == XKeysymToKeycode(display, XF86XK_AudioRaiseVolume)) {
         spawn(vol_up);
     }
-    if (ev->keycode == XKeysymToKeycode(d, XF86XK_AudioLowerVolume)) {
+    if (ev->keycode == XKeysymToKeycode(display, XF86XK_AudioLowerVolume)) {
         spawn(vol_down);
     }
-    if (ev->keycode == XKeysymToKeycode(d, XF86XK_AudioMute)) {
+    if (ev->keycode == XKeysymToKeycode(display, XF86XK_AudioMute)) {
         spawn(vol_mute);
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XF86XK_MonBrightnessUp)) {
+    if (ev->keycode == XKeysymToKeycode(display, XF86XK_MonBrightnessUp)) {
         spawn(bright_up);
     }
 
-    if (ev->keycode == XKeysymToKeycode(d, XF86XK_MonBrightnessDown)) {
+    if (ev->keycode == XKeysymToKeycode(display, XF86XK_MonBrightnessDown)) {
         spawn(bright_down);
     }
 }
@@ -537,24 +537,24 @@ static void maprequest(XEvent *e) {
     XMapRequestEvent *ev = &e->xmaprequest;
 
     if (is_dock(ev->window)) {
-    	XMapWindow(d, ev->window);
+    	XMapWindow(display, ev->window);
 	return;
     }
 
     if (is_desktop(ev->window)) {
-	int screen = DefaultScreen(d);
-        XMoveResizeWindow(d, ev->window, 0, 0, DisplayWidth(d, screen), DisplayHeight(d, screen));
-        XMapWindow(d, ev->window);
-        XLowerWindow(d, ev->window);
+	int screen = DefaultScreen(display);
+        XMoveResizeWindow(display, ev->window, 0, 0, DisplayWidth(display, screen), DisplayHeight(display, screen));
+        XMapWindow(display, ev->window);
+        XLowerWindow(display, ev->window);
         return;
     }
 
     if (is_dialog(ev->window)) {
-	    XSetWindowBorderWidth(d, ev->window, 0);
-	    XMapWindow(d, ev->window);
-	    XSelectInput(d, ev->window, StructureNotifyMask | EnterWindowMask);
-	    XRaiseWindow(d, ev->window);
-	    XSetInputFocus(d, ev->window, RevertToPointerRoot, CurrentTime);
+	    XSetWindowBorderWidth(display, ev->window, 0);
+	    XMapWindow(display, ev->window);
+	    XSelectInput(display, ev->window, StructureNotifyMask | EnterWindowMask);
+	    XRaiseWindow(display, ev->window);
+	    XSetInputFocus(display, ev->window, RevertToPointerRoot, CurrentTime);
 	    set_active_window(ev->window);
 	    set_focus_border(ev->window);
 	    if (win_count < WIN_CAPACITY) {
@@ -566,12 +566,12 @@ static void maprequest(XEvent *e) {
 	    return;
     }
 
-    XSetWindowBorderWidth(d, ev->window, BORDER_WIDTH);
-    XMoveResizeWindow(d, ev->window, (50 + slot * 30), (50 + slot * 30), 600, 400);
-    XMapWindow(d, ev->window);
-    XSelectInput(d, ev->window, StructureNotifyMask | EnterWindowMask);
-    XRaiseWindow(d, ev->window);
-    XSetInputFocus(d, ev->window, RevertToPointerRoot, CurrentTime);
+    XSetWindowBorderWidth(display, ev->window, BORDER_WIDTH);
+    XMoveResizeWindow(display, ev->window, (50 + slot * 30), (50 + slot * 30), 600, 400);
+    XMapWindow(display, ev->window);
+    XSelectInput(display, ev->window, StructureNotifyMask | EnterWindowMask);
+    XRaiseWindow(display, ev->window);
+    XSetInputFocus(display, ev->window, RevertToPointerRoot, CurrentTime);
     set_active_window(ev->window);
     set_focus_border(ev->window);
     if (win_count < WIN_CAPACITY) {
@@ -582,54 +582,54 @@ static void maprequest(XEvent *e) {
     window_counter++;
 }
 
-static void grab_key(KeySym keysym, unsigned int mod, Window r) {
+static void grab_key(KeySym keysym, unsigned int mod, Window window) {
   unsigned int modifiers[] = {0, LockMask, Mod2Mask, LockMask | Mod2Mask };
-  KeyCode code = XKeysymToKeycode(d, keysym);
+  KeyCode code = XKeysymToKeycode(display, keysym);
 
   if (code == 0) return;
 
   for (int i = 0;i < 4;i++) {
-    XGrabKey(d, code, mod | modifiers[i], r, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(display, code, mod | modifiers[i], window, True, GrabModeAsync, GrabModeAsync);
   }
 }
 
 // Shortcuts configs
-static void input_grab(Window r) {
-    grab_key(XK_Return, MOD, r);
-    grab_key(XK_Q, MOD, r);
-    grab_key(XK_Tab, ALTMOD, r);
-    grab_key(XK_F, MOD, r);
-    grab_key(XK_R, MOD | ShiftMask, r);
-    grab_key(XK_A, MOD, r);
-    grab_key(XK_X, MOD, r);
-    grab_key(XK_M, MOD, r);
-    grab_key(XK_C, MOD, r);
+static void input_grab(Window window) {
+    grab_key(XK_Return, MOD, window);
+    grab_key(XK_Q, MOD, window);
+    grab_key(XK_Tab, ALTMOD, window);
+    grab_key(XK_F, MOD, window);
+    grab_key(XK_R, MOD | ShiftMask, window);
+    grab_key(XK_A, MOD, window);
+    grab_key(XK_X, MOD, window);
+    grab_key(XK_M, MOD, window);
+    grab_key(XK_C, MOD, window);
     
-    XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioRaiseVolume), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioLowerVolume), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XF86XK_AudioMute), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XF86XK_MonBrightnessUp), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
-    XGrabKey(d, XKeysymToKeycode(d, XF86XK_MonBrightnessDown), AnyModifier, r, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(display, XKeysymToKeycode(display, XF86XK_AudioRaiseVolume), AnyModifier, window, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(display, XKeysymToKeycode(display, XF86XK_AudioLowerVolume), AnyModifier, window, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(display, XKeysymToKeycode(display, XF86XK_AudioMute), AnyModifier, window, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(display, XKeysymToKeycode(display, XF86XK_MonBrightnessUp), AnyModifier, window, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(display, XKeysymToKeycode(display, XF86XK_MonBrightnessDown), AnyModifier, window, True, GrabModeAsync, GrabModeAsync);
     
-    grab_key(XK_Left, MOD, r);
-    grab_key(XK_Right, MOD, r);
-    grab_key(XK_Up, MOD, r);
-    grab_key(XK_Down, MOD, r);
-    grab_key(XK_Home, MOD, r);
-    grab_key(XK_Prior, MOD, r);
-    grab_key(XK_End, MOD, r);
-    grab_key(XK_Next, MOD, r);
+    grab_key(XK_Left, MOD, window);
+    grab_key(XK_Right, MOD, window);
+    grab_key(XK_Up, MOD, window);
+    grab_key(XK_Down, MOD, window);
+    grab_key(XK_Home, MOD, window);
+    grab_key(XK_Prior, MOD, window);
+    grab_key(XK_End, MOD, window);
+    grab_key(XK_Next, MOD, window);
 
     int i;
     for (i = XK_1; i <= XK_9; i++) {
-        grab_key(i, MOD, r);
-        grab_key(i, MOD | ShiftMask, r);
+        grab_key(i, MOD, window);
+        grab_key(i, MOD | ShiftMask, window);
     }
 
     unsigned int modifiers[] = { 0, LockMask, Mod2Mask, LockMask | Mod2Mask };
     for (i = 0; i < 4; i++) {
-        XGrabButton(d, Button1, MOD | modifiers[i], r, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-        XGrabButton(d, Button3, MOD | modifiers[i], r, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+        XGrabButton(display, Button1, MOD | modifiers[i], window, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+        XGrabButton(display, Button3, MOD | modifiers[i], window, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
     }
 }
 
@@ -638,10 +638,10 @@ static int xerror(Display *dpy, XErrorEvent *ee) {
     return 0;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     XEvent ev;
 
-    if (!(d = XOpenDisplay(NULL))) {
+    if (!(display = XOpenDisplay(NULL))) {
         fprintf(stderr, "lukwm: Couldn't open display.\n");
         exit(1);
     }
@@ -660,10 +660,10 @@ int main(int argc, char** argv) {
     } else {
     	strncpy(self_path, argv[0], sizeof(self_path) - 1);
     }
-    int s = DefaultScreen(d);
-    root = RootWindow(d, s);
+    int screen = DefaultScreen(display);
+    root = RootWindow(display, screen);
 
-    XSelectInput(d, root, SubstructureRedirectMask | SubstructureNotifyMask);
+    XSelectInput(display, root, SubstructureRedirectMask | SubstructureNotifyMask);
     input_grab(root);
     init_ewmh();
     init_colors();
@@ -672,15 +672,15 @@ int main(int argc, char** argv) {
     	spawn(autostart[i]);
     }
 
-    wm_protocols = XInternAtom(d, "WM_PROTOCOLS", False);
-    wm_delete = XInternAtom(d, "WM_DELETE_WINDOW", False);
+    wm_protocols = XInternAtom(display, "WM_PROTOCOLS", False);
+    wm_delete = XInternAtom(display, "WM_DELETE_WINDOW", False);
 
-    while (!XNextEvent(d, &ev)) {
+    while (!XNextEvent(display, &ev)) {
         if (events[ev.type]) {
             events[ev.type](&ev);
         }
     }
 
-    XCloseDisplay(d);
+    XCloseDisplay(display);
     return 0;
 }
