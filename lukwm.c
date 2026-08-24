@@ -655,8 +655,10 @@ int main(int argc, char **argv) {
 	    exit(1);
     }
     if (win_count > WIN_CAPACITY){
-       Client *tmp =  realloc(win_list, win_count * sizeof(Client));
-       if (tmp == NULL){
+       WIN_CAPACITY *= 2;
+        Client *tmp =  realloc(win_list, win_count * sizeof(Client));
+       
+        if (tmp == NULL){
             fprintf(stderr, "lukwm: Failed to reallocate window list\n");
             exit(1);
         }
