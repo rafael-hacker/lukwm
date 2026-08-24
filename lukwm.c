@@ -649,10 +649,18 @@ int main(int argc, char **argv) {
     signal(SIGCHLD, SIG_IGN);
     XSetErrorHandler(xerror);
 
-    win_list = mmap(NULL, sizeof(Client) * WIN_CAPACITY, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    if (win_list == MAP_FAILED) {
+    win_list = malloc(sizeof(Client) * WIN_CAPACITY);
+    if (win_list == NULL) {
 	    fprintf(stderr, "lukwm: Failed to allocate window list\n");
 	    exit(1);
+    }
+    if (win_count > WIN_CAPACITY){
+       Client *tmp =  realloc(win_list, win_count * sizeof(Client));
+       if (tmp == NULL){
+            fprintf(stderr, "lukwm: Failed to reallocate window list");
+            exit(1);
+        }
+        win_list = tmp;
     }
     ssize_t len = readlink("/proc/self/exe", self_path, sizeof(self_path) - 1);
     if (len != -1) {
