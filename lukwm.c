@@ -657,7 +657,7 @@ int main(int argc, char **argv) {
     if (win_count > WIN_CAPACITY){
        Client *tmp =  realloc(win_list, win_count * sizeof(Client));
        if (tmp == NULL){
-            fprintf(stderr, "lukwm: Failed to reallocate window list");
+            fprintf(stderr, "lukwm: Failed to reallocate window list\n");
             exit(1);
         }
         win_list = tmp;
@@ -688,7 +688,7 @@ int main(int argc, char **argv) {
             events[ev.type](&ev);
         }
     }
-
+    free(win_list);
     XCloseDisplay(display);
     return 0;
 }
