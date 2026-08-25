@@ -55,7 +55,7 @@ None of the runtime tools are hard dependencies of lukwm itself — they're just
 ## Installation
 
 ```sh
-git clone https://github.com/simeulinuxkaliaiwr/lukwm.git
+https://github.com/rafael-hacker/lukwm.git
 cd lukwm
 make
 sudo make install
