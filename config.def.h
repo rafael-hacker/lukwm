@@ -3,7 +3,7 @@
 #define MOD Mod4Mask
 #define ALTMOD Mod1Mask
 #define NUM_WS 9
-#define WIN_CAPACITY 10000
+static int WIN_CAPACITY = 32;
 #define BORDER_FOCUS "#88c0d0"
 #define BORDER_UNFOCUS "#444444"
 #define BORDER_WIDTH 	3
