@@ -1,5 +1,5 @@
 CC = cc
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -O2 -flto -s 
 LIBS = -lX11
 PREFIX ?= /usr/local
 
