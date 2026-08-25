@@ -22,6 +22,7 @@ static const char *vol_mute[] = {"wpctl","set-mute","@DEFAULT_AUDIO_SINK@","togg
 static const char *bright_up[] = {"brightnessctl","set","+10%",NULL};
 static const char *bright_down[] = {"brightnessctl","set","-10%",NULL};
 
+// Browser & Laucher commands
 static const char *menu_launcher[] = {"rofi","-show","drun",NULL};
 static const char *browser[] = {"firefox",NULL};
 
